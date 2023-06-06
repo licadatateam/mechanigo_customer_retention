@@ -998,19 +998,18 @@ if __name__ == '__main__':
                           min_value = df_data.appointment_date.min(),
                           max_value = datetime.today(),
                           value = df_data.appointment_date.min())
+                min_txn_date = min_txn_date.strftime('%Y/%m/%d')
             with max_txn:
                 max_txn_date = st.date_input('Max Transaction Date:',
                           min_value = df_data.appointment_date.min(),
                           max_value = datetime.today(),
                           value = datetime.today())
+                max_txn_date = max_txn_date.strftime('%Y/%m/%d')
                 
-            df_temp.loc[:, 'last_txn_date'] = pd.to_datetime(df_temp.last_txn_date)
-            df_retention = df_temp[(df_temp.last_txn_date.dt.date >= min_txn_date) & (df_temp.last_txn_date.dt.date <= max_txn_date)]
-            df_retention.loc[:, 'last_txn_date'] = df_retention.last_txn_date.apply(lambda x: x.strftime('%Y/%m/%d'))
-            df_temp.loc[:, 'last_txn_date'] = df_temp.last_txn_date.apply(lambda x: x.strftime('%Y/%m/%d'))
+            df_retention = df_temp[(df_temp.last_txn_date >= min_txn_date) & (df_temp.last_txn_date <= max_txn_date)]
             
         time = 30
-        df_retention = update_retention(pnbd, ggf, time, df_retention)
+        df_retention = update_retention(pnbd, ggf, time, df_temp)
          
         customer_retention_list = customer_search(df_data, df_retention)
         
