@@ -1009,7 +1009,7 @@ if __name__ == '__main__':
             df_retention = df_temp[(df_temp.last_txn_date >= min_txn_date) & (df_temp.last_txn_date <= max_txn_date)]
             
         time = 30
-        df_retention = update_retention(pnbd, ggf, time, df_temp)
+        df_retention = update_retention(pnbd, ggf, time, df_retention)
          
         customer_retention_list = customer_search(df_data, df_retention)
         
