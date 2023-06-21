@@ -940,7 +940,7 @@ def write_retention_data(data, write_url):
     #write_url = 'https://docs.google.com/spreadsheets/d/1_Lxyx0hhK-jwpigGEbNP2YFd43FYOeKTDze_N9Sl_XQ/edit#gid=1750212761'
     write_key = re.search('(?<=\/d\/).*(?=\/edit)', write_url)[0]
     
-    write_to_gsheet(df_merged, 'masterlist', write_key)
+    write_to_gsheet(df_merged, 'Masterlist', write_key)
     write_to_gsheet(prep_gsheet(due_6_7), 'DUE 6-7 MOs', write_key)
     write_to_gsheet(prep_gsheet(due_8_12), 'DUE 8-12 MOs', write_key)
     write_to_gsheet(prep_gsheet(churned), 'CHURNED', write_key)
@@ -1075,7 +1075,7 @@ if __name__ == '__main__':
         
     else:
         url = get_url(month_year)
-        gsheet = read_gsheet(url, 'masterlist')
+        gsheet = read_gsheet(url, 'Masterlist')
         if gsheet is None:
             st.warning('Not able to find retention sheets.')
             write_button = st.button('Write retention data to google sheet?')
