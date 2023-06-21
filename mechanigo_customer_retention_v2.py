@@ -9,18 +9,17 @@ import pandas as pd
 import numpy as np
 import os, re, string
 from datetime import datetime, date
-import gspread
+
 import calendar
 from joblib import dump, load
 
-from lifetimes.fitters.pareto_nbd_fitter import ParetoNBDFitter
-from lifetimes import GammaGammaFitter
 from fuzzywuzzy import fuzz, process
 
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid
 import matplotlib.pyplot as plt
-import plotly.express as px
+import gspread
+from gspread_formatting import *
 
 def lev_dist(seq1, seq2):
     '''
@@ -713,41 +712,6 @@ def cohort_rfm(df, month_end_date):
     
     return df_retention
 
-@st.cache_resource
-def fit_models(df_retention):
-    
-    pnbd_filename = 'pnbd.joblib'
-    if os.path.exists(pnbd_filename):
-        pnbd_dtime = datetime.fromtimestamp(os.path.getmtime(pnbd_filename)).date()
-        if (datetime.today().date() - pnbd_dtime).days >= 7:
-            pnbd = ParetoNBDFitter(penalizer_coef=0.001)
-            pnbd.fit(df_retention['frequency'], df_retention['recency'], df_retention['T'])
-        else:
-            pnbd = load(pnbd_filename)
-    else:
-        pnbd = ParetoNBDFitter(penalizer_coef=0.001)
-        pnbd.fit(df_retention['frequency'], df_retention['recency'], df_retention['T'])
-        dump(pnbd, pnbd_filename)
-    
-    ggf_filename = 'ggf.joblib'
-    if os.path.exists(ggf_filename):
-        ggf_dtime = datetime.fromtimestamp(os.path.getmtime(ggf_filename)).date()
-        if (datetime.today().date() - ggf_dtime).days >= 7:
-            # model to estimate average monetary value of customer transactions
-            ggf = GammaGammaFitter(penalizer_coef=0.001)
-            # filter df to returning customers
-            returning_df_retention = df_retention[df_retention['frequency']>0]
-            # fit model
-            ggf.fit(returning_df_retention['frequency'], returning_df_retention['avg_sales'])
-        else:
-            ggf = load(ggf_filename)
-    else:
-        ggf = GammaGammaFitter(penalizer_coef=0.001)
-        returning_df_retention = df_retention[df_retention['frequency']>0]
-        ggf.fit(returning_df_retention['frequency'], returning_df_retention['avg_sales'])
-        dump(ggf, ggf_filename)
-    
-    return pnbd, ggf
 
 def import_data():
     '''
@@ -1011,6 +975,8 @@ if __name__ == '__main__':
         # 8-12 months_due
         due_8_12 = df_merged[df_merged.month_diff.between(8,12) & df_merged.frequency.isin([0,1])]
         
+        # churned / 12+ months
+        churned = df_merged[df_merged.month_diff > 12]
         
         #write_url = 'https://docs.google.com/spreadsheets/d/1_Lxyx0hhK-jwpigGEbNP2YFd43FYOeKTDze_N9Sl_XQ/edit#gid=1750212761'
         write_key = re.search('(?<=\/d\/).*(?=\/edit)', write_url)[0]
@@ -1018,6 +984,7 @@ if __name__ == '__main__':
         write_to_gsheet(df_merged, 'masterlist', write_key)
         write_to_gsheet(prep_gsheet(due_6_7), 'DUE 6-7 MOs', write_key)
         write_to_gsheet(prep_gsheet(due_8_12), 'DUE 8-12 MOs', write_key)
+        write_to_gsheet(prep_gsheet(churned), 'CHURNED', write_key)
     
     else:
         # evals
