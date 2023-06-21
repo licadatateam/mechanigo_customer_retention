@@ -7,4 +7,3 @@ matplotlib
 seaborn
 plotly
 gspread
-calendar
