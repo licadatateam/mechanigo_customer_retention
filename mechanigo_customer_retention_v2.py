@@ -826,7 +826,7 @@ def customer_search(df_data, df_retention):
         
     return df_list_retention
 
-def write_to_gsheet(df, sheet_name, gsheet_key):
+def write_gsheet(df, sheet_name, gsheet_key):
     '''
     Creates new sheet in designated googlesheet and writes selected data from df
     
@@ -922,10 +922,23 @@ def prep_gsheet(df):
     return df_gsh.sort_values(by = ['MONTH DIFF', 'FULL NAME'], ascending = True)
 
 def get_url(key):
-    return st.session_state["url"].get(key, None)
+    key_url = 'https://docs.google.com/spreadsheets/d/1umX77-c-XIu649ZTjeaZIjtFTd-WXVsDOjL_uVOLhZM/edit#gid=0'
+    key_sheet = read_gsheet(key_url, 'url')
+    
+    if key in key_sheet.month_year.unique():
+        return key_sheet[key_sheet.month_year == key]['url'].values[0]
+    else:
+        return None
 
 def add_url(key, value):
-    st.session_state['url'][key] = value
+    key_url = 'https://docs.google.com/spreadsheets/d/1umX77-c-XIu649ZTjeaZIjtFTd-WXVsDOjL_uVOLhZM/edit#gid=0'
+    key_sheet = read_gsheet(key_url, 'url').set_index('month_year')
+    
+    key_sheet.loc[key, 'url'] = value
+    key_sheet = key_sheet.reset_index()
+    gsheet_key = re.search('(?<=\/d\/).*(?=\/edit)', key_url)[0]
+    write_gsheet(key_sheet, 'url', gsheet_key)
+    
 
 def write_retention_data(data, write_url):
     # 6-7 months due
@@ -940,10 +953,10 @@ def write_retention_data(data, write_url):
     #write_url = 'https://docs.google.com/spreadsheets/d/1_Lxyx0hhK-jwpigGEbNP2YFd43FYOeKTDze_N9Sl_XQ/edit#gid=1750212761'
     write_key = re.search('(?<=\/d\/).*(?=\/edit)', write_url)[0]
     
-    write_to_gsheet(df_merged, 'Masterlist', write_key)
-    write_to_gsheet(prep_gsheet(due_6_7), '6-7 MOS DUE', write_key)
-    write_to_gsheet(prep_gsheet(due_8_12), '8-12 MOS DUE', write_key)
-    write_to_gsheet(prep_gsheet(churned), 'CHURNED', write_key)
+    write_gsheet(df_merged, 'Masterlist', write_key)
+    write_gsheet(prep_gsheet(due_6_7), '6-7 MOS DUE', write_key)
+    write_gsheet(prep_gsheet(due_8_12), '8-12 MOS DUE', write_key)
+    write_gsheet(prep_gsheet(churned), 'CHURNED', write_key)
 
 def show_retention_data(read_url):
     read_url = 'https://docs.google.com/spreadsheets/d/1tyvgjTOQu0LZc4lNblItvKnJrCvv9VsFmDkCahqHg-8/edit#gid=926286274'
@@ -1034,9 +1047,6 @@ if __name__ == '__main__':
     # import data and preparation
     df_data = get_data()
     
-    if 'url' not in st.session_state:
-        st.session_state['url'] = {'May-2023' : ''}
-    
     # select month & year to get customer returnees
     years = ['2023', '2022']
     mo_col, yr_col = st.columns(2)
@@ -1074,18 +1084,19 @@ if __name__ == '__main__':
             st.stop()
         
     else:
-        url = get_url(month_year)
-        gsheet = read_gsheet(url, 'Masterlist')
+        gsheet = read_gsheet(stored_url, 'Masterlist')
         if gsheet is None:
             st.warning('Not able to find retention sheets.')
             write_button = st.button('Write retention data to google sheet?')
             if write_button:
-                write_retention_data(df_merged, url)
+                write_retention_data(df_merged, stored_url)
                 st.experimental_rerun()
             else:
                 st.stop()
         else:
             # evals
             st.header('RETENTION TRACKING')
-            show_retention_data(url)
+            show_retention_data(stored_url)
+    
+    
         
