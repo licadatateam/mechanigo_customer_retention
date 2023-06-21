@@ -1,9 +1,6 @@
-selenium==4.2.0
-streamlit>=1.10.0
-scikit-learn
+streamlit>=1.20.0
 streamlit-aggrid
 lifetimes
 matplotlib
-seaborn
 plotly
 gspread
