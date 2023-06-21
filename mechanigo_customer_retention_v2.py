@@ -941,8 +941,8 @@ def write_retention_data(data, write_url):
     write_key = re.search('(?<=\/d\/).*(?=\/edit)', write_url)[0]
     
     write_to_gsheet(df_merged, 'Masterlist', write_key)
-    write_to_gsheet(prep_gsheet(due_6_7), 'DUE 6-7 MOs', write_key)
-    write_to_gsheet(prep_gsheet(due_8_12), 'DUE 8-12 MOs', write_key)
+    write_to_gsheet(prep_gsheet(due_6_7), '6-7 MOS DUE', write_key)
+    write_to_gsheet(prep_gsheet(due_8_12), '8-12 MOS DUE', write_key)
     write_to_gsheet(prep_gsheet(churned), 'CHURNED', write_key)
 
 def show_retention_data(read_url):
@@ -952,8 +952,8 @@ def show_retention_data(read_url):
     #df_67 = read_gsheet(read_key, 'DUE 6-7 MOs')
     
     # date_messaged
-    with st.expander('DUE 6-7 MOs', expanded = False):
-        df_temp1 = read_gsheet(read_url, 'DUE 6-7 MOS').copy()
+    with st.expander('6-7 MOS DUE', expanded = False):
+        df_temp1 = read_gsheet(read_url, '6-7 MOS DUE').copy()
         st.subheader('MESSAGE TRACKING')
         month_days = pd.date_range(start = month_start_date, 
                                    end = month_end_date)
@@ -989,7 +989,7 @@ def show_retention_data(read_url):
         ax1.legend(legend_temp1, loc = 'center left', bbox_to_anchor=(-0.1, 1.))
         st.pyplot(fig1)
     
-    with st.expander('DUE 8-12 MOs', expanded = False):
+    with st.expander('8-12 MOS DUE', expanded = False):
         df_temp2 = read_gsheet(read_url, '8-12 MOS DUE').copy()
         
         st.subheader('MESSAGE TRACKING')
