@@ -4,3 +4,4 @@ lifetimes
 matplotlib
 plotly
 gspread
+fuzzywuzzy
