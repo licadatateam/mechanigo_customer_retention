@@ -5,3 +5,5 @@ matplotlib
 plotly
 gspread
 fuzzywuzzy
+dateutil
+seaborn

@@ -8,7 +8,8 @@ Created on Mon Jun 19 13:39:46 2023
 import pandas as pd
 import numpy as np
 import os, re, string
-from datetime import datetime, date
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import calendar
 
 from fuzzywuzzy import fuzz, process
@@ -16,6 +17,7 @@ from fuzzywuzzy import fuzz, process
 import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid
 import matplotlib.pyplot as plt
+import seaborn as sns
 import gspread
 #from gspread_formatting import *
 
@@ -995,7 +997,128 @@ def show_retention_data(read_url, month_start_date, month_end_date):
     with st.expander('CHURNED', expanded = False):
         retention_charts(read_url, 'CHURNED', month_start_date,
                          month_end_date)
+
+@st.cache_data
+def calc_retention_rate(filtered_df, date_range, rate_or_actual):
+    '''
+    Calculates retention rates for non-first acq cohorts
     
+    Parameters
+    ----------
+    filtered_df : dataframe
+        filtered df_data
+    date_range: list
+        list of int year_month ("%Y%m" or "202201") Note leading zero fill via zfill
+    rate_or_actual: str
+        string with values of "Rate" or "Actual"
+    
+    Returns
+    -------
+    retention_rate_dict: dictionary
+        dictionary with date range values as keys and values with list of retention rates per month
+    
+    '''
+    
+    retention_rate_dict = {}
+    for date_index, date_val in enumerate(date_range):
+        unique_users_pool = list(filtered_df[filtered_df['tx_month']==date_val]['full_name'].unique())
+        retention_rate = []
+        for year_month_index, year_month in enumerate(date_range[date_index:]):
+            if year_month_index == 0:
+                # get users with more than 1 transaction in same month
+                users = filtered_df[filtered_df['tx_month'] == year_month]['full_name'].value_counts()
+                curr_unique_users = list(users[users > 1].index)
+            else:
+                curr_unique_users = list(filtered_df[filtered_df['tx_month']==year_month]['full_name'].unique())
+            # curr_unique_users = list((filtered_df[filtered_df['tx_month] == year_month]['full_name'].value_counts() > 1).index)
+            # XOR / not intersection
+            # new_unique_users = list(set(unique_users_pool) ^ set(curr_unique_users))
+            try:
+                if rate_or_actual == "Rate":
+                    retention_rate.append(round((len(list(set(curr_unique_users) & set(unique_users_pool))))/len(unique_users_pool), 3))
+                else:
+                    retention_rate.append(len(list(set(curr_unique_users) & set(unique_users_pool))))
+            except:
+                retention_rate.append(0)
+        if rate_or_actual == 'Rate':
+            retention_rate.insert(0, 1)
+        else:
+            retention_rate.insert(0, len(unique_users_pool))
+        retention_rate.extend([np.nan]*(len(date_range) - len(retention_rate)))
+        retention_rate_dict[date_val] = retention_rate
+    return retention_rate_dict
+    
+def plot_cohort_analysis(df, column_name, value, start_date, rate_or_actual):
+    '''
+    Calculate and plot return rate for chosen cohort
+    '''
+    # setup date_range of data and chart
+    date_range = pd.date_range(start = datetime(start_date.year, start_date.month, 1), 
+                                 end = datetime(datetime.today().year, 
+                                                   datetime.today().month, 1)\
+                                                 + timedelta(days=30), 
+                                 freq='1M')\
+                                .strftime('%Y%m').tolist()
+    date_range = [int(d) for d in date_range]
+    # filter data
+    if column_name == "first_acq":
+        #cohort_pivot = overall_cohort_analysis(df, start_date, rate_or_actual)
+        headers = sorted(list(df['first_acq'].unique()))
+        start_month = int(str(start_date.year) + str(start_date.month).zfill(2))
+        filtered_df = df[df['first_acq'].isin(list(headers[headers.index(start_month):]))]
+
+    elif column_name == 'mechanic_name':
+        customers = df[(df.mechanic_name == value) &
+                       (df.date.dt.date >= start_date)]['full_name'].unique()
+        filtered_df = df[df.full_name.isin(customers)]
+        
+    elif column_name == 'lead_source':
+        temp_df = df[~(df.lead_source.isnull())]
+        if value == 'website_website':
+            customers = temp_df[(temp_df.lead_source != 'backend') & (temp_df.date.dt.date >= start_date) & (temp_df.date.dt.date == temp_df.acq_date)]['full_name'].unique()
+            filtered_df = temp_df[(temp_df.full_name.isin(customers)) & (temp_df.lead_source != 'backend')]
+        # use first acq and tx_month
+        elif value == 'website_backend':
+            customers = temp_df[(temp_df.lead_source != 'backend') & (temp_df.date.dt.date >= start_date) & (temp_df.date.dt.date == temp_df.acq_date)]['full_name'].unique()
+            filtered_df = temp_df[(temp_df.full_name.isin(customers) & (temp_df.lead_source == 'backend') & (temp_df.date.dt.date > temp_df.acq_date)) | 
+                                  (temp_df.full_name.isin(customers) & (temp_df.lead_source != 'backend') & (temp_df.date.dt.date == temp_df.acq_date))]
+        elif value == 'backend_website':
+            customers = temp_df[(temp_df.lead_source == 'backend') & (temp_df.date.dt.date >= start_date) & (temp_df.date.dt.date == temp_df.acq_date)]['full_name'].unique()
+            filtered_df = temp_df[(temp_df.full_name.isin(customers) & (temp_df.lead_source != 'backend') & (temp_df.date.dt.date > temp_df.acq_date)) | 
+                                  (temp_df.full_name.isin(customers) & (temp_df.lead_source == 'backend') & (temp_df.date.dt.date == temp_df.acq_date))]
+        elif value == 'backend_backend':
+            customers = temp_df[(temp_df.lead_source == 'backend') & (temp_df.date.dt.date >= start_date) & (temp_df.date.dt.date == temp_df.acq_date)]['full_name'].unique()
+            filtered_df = temp_df[temp_df.full_name.isin(customers) & (temp_df.lead_source == 'backend')]
+    else:
+        filtered_df = df[df[column_name]==value]
+        
+    # calculate return rate for selected category value
+    cohort_dicts = calc_retention_rate(filtered_df, date_range, rate_or_actual)
+    cohort_pivot = pd.DataFrame.from_dict(cohort_dicts, orient='index')
+    cohort_pivot.columns = range(-1, len(date_range))
+    
+    fig_dims = (16, 16)
+    fig, ax = plt.subplots(figsize=fig_dims)
+    #ax.set(xlabel='Months After First Purchase', ylabel='First Purchase Cohort', title="Cohort Analysis")
+    y_labels = [year_month for year_month in date_range]
+    x_labels = np.array(list(range(0, len(y_labels))))-1
+    plt.yticks(ticks=range(len(date_range)), labels=y_labels, fontsize=15, rotation=90)
+    plt.xticks(x_labels, x_labels, fontsize=15)
+    # adjusted scale for colorbar via vmin/vmax
+    sns.heatmap(cohort_pivot, annot=True, fmt= '.1%' if rate_or_actual=="Rate" else '.0f' , mask=cohort_pivot.isnull(), 
+                square=True, linewidths=.5, cmap=sns.cubehelix_palette(8), annot_kws={"fontsize":11},
+                vmin=0, vmax=0.1 if rate_or_actual=="Rate" else np.max(np.max(cohort_pivot.iloc[:,1:])))
+    
+    plt.xlabel('Months After Acquisition', size=18)
+    plt.ylabel('Acquisition Month', size=18)
+    plt.title('Cohort Analysis')
+    plt.tight_layout()
+    plt.show()
+    st.pyplot(fig)
+    
+    st.dataframe(filtered_df[['date', 'full_name', 'phone', 'lead_source', 'brand', 'model', 'model_year', 'mechanic_name', 'service_name', 'acq_date']])
+
+
 
 ## =========================== main flow ======================================
 if __name__ == '__main__':
@@ -1021,39 +1144,106 @@ if __name__ == '__main__':
     month_end_date = datetime(int(year), list(calendar.month_abbr).index(month), selected_month_len[1])
     
     # calculates cohort rfm data for given month
-    df_retention = cohort_rfm(df_data, month_end_date)
-    df_retention = df_retention[df_retention.month_diff >= 6].sort_values(by = 'month_diff', 
-                                                                          ascending = True)
-    customer_retention_list = customer_search(df_data, df_retention)
-    # master list
-    df_merged = combine_customer_data(df_data, df_retention)
+    df_temp = cohort_rfm(df_data, month_end_date)
     
-    month_year = '-'.join([month, year])
-    stored_url = get_url(month_year)
+    retention_tab, cohort_tab = st.tabs(['Customer Filter', 'Cohort Analysis'])
     
-    if stored_url is None:
-        url = st.text_input('Google Sheet link to retention data')
-        temp_button = st.button(f'Add Google Sheet URL for {month_year}')
-        if temp_button:
-            add_url(month_year, url)
-            st.experimental_rerun()
-        else:
-            st.stop()
+    with retention_tab:
+        # filters
+        with st.expander('Customer Data Filters'):
+            st.subheader('Last Transaction Date')
+            min_txn, max_txn = st.columns(2)
+            with min_txn:
+                min_txn_date = st.date_input('Min Last Appointment Date:',
+                          min_value = df_data.appointment_date.min(),
+                          max_value = datetime.today(),
+                          value = df_data.appointment_date.min())
+                min_txn_date = min_txn_date.strftime('%Y/%m/%d')
+            with max_txn:
+                max_txn_date = st.date_input('Max Last Appointment Date:',
+                          min_value = df_data.appointment_date.min(),
+                          max_value = month_end_date,
+                          value = month_start_date - relativedelta(months = 6))
+                max_txn_date = max_txn_date.strftime('%Y/%m/%d')
         
-    else:
-        gsheet = read_gsheet(stored_url, 'Masterlist')
-        if gsheet is None:
-            st.warning('Not able to find retention sheets.')
-            write_button = st.button('Write retention data to google sheet?')
-            if write_button:
-                write_retention_data(df_merged, stored_url)
+            #df_retention = df_temp[(df_temp.last_txn_date >= min_txn_date) & (df_temp.last_txn_date <= max_txn_date)]
+            df_retention = df_temp[df_temp.last_txn_date.between(min_txn_date, max_txn_date)].sort_values('month_diff',
+                                                                                                      ascending = True)
+            # df_retention = df_temp[df_temp.month_diff >= 6].sort_values(by = 'month_diff', 
+            #                                                                   ascending = True)
+        # customer table
+        customer_retention_list = customer_search(df_data, df_retention)
+        
+        # master list
+        df_merged = combine_customer_data(df_data, df_retention)
+        
+        month_year = '-'.join([month, year])
+        stored_url = get_url(month_year)
+        
+        if stored_url is None:
+            url = st.text_input('Google Sheet link to retention data')
+            temp_button = st.button(f'Add Google Sheet URL for {month_year}')
+            if temp_button:
+                add_url(month_year, url)
                 st.experimental_rerun()
             else:
                 st.stop()
+            
         else:
-            # evals
-            st.header('RETENTION TRACKING')
-            show_retention_data(stored_url, month_start_date, month_end_date)
+            gsheet = read_gsheet(stored_url, 'Masterlist')
+            if gsheet is None:
+                st.warning('Not able to find retention sheets.')
+                write_button = st.button('Write retention data to google sheet?')
+                if write_button:
+                    write_retention_data(df_merged, stored_url)
+                    st.experimental_rerun()
+                else:
+                    st.stop()
+            else:
+                # evals
+                st.header('RETENTION TRACKING')
+                show_retention_data(stored_url, month_start_date, month_end_date)
+                
+    with cohort_tab:
+        
+        st.header('Cohort Retention Analysis')
+        # plot cohort_retention_chart
+        st.write('''This chart shows the retention rate for customers of various cohorts
+                 (grouped by first month of transaction). The data shows the portion
+                 of customers that return with respect to the starting month.
+                 ''')
+        #cohort_pivot = cohort_analysis(df_data)
+        cat_col, val_col, date_col = st.columns(3)
+        with cat_col:
+            cat = st.selectbox('Category',
+                               options=['first_acq', 'model_year', 'brand',
+                                        'service_category', 'mechanic_name', 'lead_source'],
+                               index = 0,
+                               help = 'Category to filter.')
+        with val_col:
+            opts = {'first_acq': ['None'],
+                    'model_year': list(sorted(df_data[df_data['model_year'].notna()]['model_year'].unique())),
+                    'brand' : list(sorted(df_data['brand'].unique())),
+                    'service_category': list(np.unique(list(service_category_dict.keys()))),
+                    'mechanic_name': sorted(df_data[df_data['mechanic_name'] != '']['mechanic_name'].unique()),
+                    'lead_source': ['website_website', 'backend_website', 'website_backend']}
+            
+            val = st.selectbox('Category value',
+                               options = opts[cat],
+                               index = 0,
+                               help = 'Value of category to filter.')
+        with date_col:
+            start_month = st.date_input('Starting month',
+                          min_value = df_data.date.min().date(),
+                          value = pd.to_datetime('2022-01-01'),
+                          help = 'Starting month of data shown.')
+        
+        rate_or_actual = st.radio("Format",
+                 options=["Rate", "Actual"],
+                 index = 0,
+                 help = 'Format of retention numbers shown.')
+        # how to filter new and non-new customers
+        plot_cohort_analysis(df_data, cat, val, start_month, rate_or_actual)
     
     
         
