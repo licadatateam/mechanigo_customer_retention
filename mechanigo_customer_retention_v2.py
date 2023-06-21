@@ -948,12 +948,12 @@ def write_retention_data(data, write_url):
 def show_retention_data(read_url):
     read_url = 'https://docs.google.com/spreadsheets/d/1tyvgjTOQu0LZc4lNblItvKnJrCvv9VsFmDkCahqHg-8/edit#gid=926286274'
     #read_url = get_url(month_year)
-    read_key = re.search('(?<=\/d\/).*(?=\/edit)', read_url)[0]
+    #read_key = re.search('(?<=\/d\/).*(?=\/edit)', read_url)[0]
     #df_67 = read_gsheet(read_key, 'DUE 6-7 MOs')
     
     # date_messaged
     with st.expander('DUE 6-7 MOs', expanded = False):
-        df_temp1 = read_gsheet(read_key, '6 MOS DUE - 7 MOS DUE').copy()
+        df_temp1 = read_gsheet(read_url, '6 MOS DUE - 7 MOS DUE').copy()
         st.subheader('MESSAGE TRACKING')
         month_days = pd.date_range(start = month_start_date, 
                                    end = month_end_date)
@@ -990,7 +990,7 @@ def show_retention_data(read_url):
         st.pyplot(fig1)
     
     with st.expander('DUE 8-12 MOs', expanded = False):
-        df_temp2 = read_gsheet(read_key, '8-12 MOS DUE').copy()
+        df_temp2 = read_gsheet(read_url, '8-12 MOS DUE').copy()
         
         st.subheader('MESSAGE TRACKING')
         month_days = pd.date_range(start = month_start_date, 
@@ -1075,7 +1075,7 @@ if __name__ == '__main__':
         
     else:
         url = get_url(month_year)
-        gsheet = read_gsheet(url)
+        gsheet = read_gsheet(url, 'masterlist')
         if gsheet is None:
             st.warning('Not able to find retention sheets.')
             write_button = st.button('Write retention data to google sheet?')
