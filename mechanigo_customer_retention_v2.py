@@ -865,7 +865,7 @@ def write_to_gsheet(df, sheet_name, gsheet_key):
         worksheet.clear()
     worksheet.update([df.columns.tolist()]+df.values.tolist())
 
-def read_gsheet(key, title):
+def read_gsheet(url, title):
     
     credentials = {
       "type": "service_account",
@@ -880,12 +880,15 @@ def read_gsheet(key, title):
       "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/googlesheetsarvin%40xenon-point-351408.iam.gserviceaccount.com"
     }
     
-    gsheet_key = key
+    gsheet_key = re.search('(?<=\/d\/).*(?=\/edit)', url)[0]
     gc = gspread.service_account_from_dict(credentials)
     wb = gc.open_by_key(gsheet_key)
     
-    sh = wb.worksheet(title)
-    df = pd.DataFrame.from_records(sh.get_all_records())
+    try:
+        sh = wb.worksheet(title)
+        df = pd.DataFrame.from_records(sh.get_all_records())
+    except:
+        df = None
     
     return df
 
@@ -926,6 +929,107 @@ def get_url(key):
 def add_url(key, value):
     st.session_state['url'][key] = value
 
+def write_retention_data(data, write_url):
+    # 6-7 months due
+    due_6_7 = data[data.month_diff.isin([6,7]) & data.frequency.isin([0,1])]
+    
+    # 8-12 months_due
+    due_8_12 = data[data.month_diff.between(8,12) & data.frequency.isin([0,1])]
+    
+    # churned / 12+ months
+    churned = data[data.month_diff > 12]
+    
+    #write_url = 'https://docs.google.com/spreadsheets/d/1_Lxyx0hhK-jwpigGEbNP2YFd43FYOeKTDze_N9Sl_XQ/edit#gid=1750212761'
+    write_key = re.search('(?<=\/d\/).*(?=\/edit)', write_url)[0]
+    
+    write_to_gsheet(df_merged, 'masterlist', write_key)
+    write_to_gsheet(prep_gsheet(due_6_7), 'DUE 6-7 MOs', write_key)
+    write_to_gsheet(prep_gsheet(due_8_12), 'DUE 8-12 MOs', write_key)
+    write_to_gsheet(prep_gsheet(churned), 'CHURNED', write_key)
+
+def show_retention_data(read_url):
+    read_url = 'https://docs.google.com/spreadsheets/d/1tyvgjTOQu0LZc4lNblItvKnJrCvv9VsFmDkCahqHg-8/edit#gid=926286274'
+    #read_url = get_url(month_year)
+    read_key = re.search('(?<=\/d\/).*(?=\/edit)', read_url)[0]
+    #df_67 = read_gsheet(read_key, 'DUE 6-7 MOs')
+    
+    # date_messaged
+    with st.expander('DUE 6-7 MOs', expanded = False):
+        df_temp1 = read_gsheet(read_key, '6 MOS DUE - 7 MOS DUE').copy()
+        st.subheader('MESSAGE TRACKING')
+        month_days = pd.date_range(start = month_start_date, 
+                                   end = month_end_date)
+        dct_temp1 = {}
+        ref = pd.to_datetime(df_temp1['DATE MESSAGED']).value_counts()
+        for day in month_days:
+            dct_temp1[day.strftime('%Y-%m-%d')] = ref[day] if day in ref.index else 0
+        date_messaged_temp1 = pd.DataFrame(data = dct_temp1.values(), 
+                                     index = dct_temp1.keys())
+        date_messaged_temp1.columns = ['count']
+        st.bar_chart(data = date_messaged_temp1)
+        
+        st.metric('TOTAL MESSAGED',
+                  value = str(date_messaged_temp1['count'].sum()) + \
+                      ' (' + str(round(date_messaged_temp1['count'].sum()*100/len(df_temp1), 2)) + ' %)')
+        
+            
+        st.subheader('ENGAGEMENT')
+        engagement_temp1 = df_temp1[df_temp1['DATE MESSAGED'] != ''].loc[:, 'ENGAGEMENT'].replace('', '-').value_counts()
+        labels_temp1 = engagement_temp1.index
+        sizes_temp1 = engagement_temp1.values
+        percent_temp1 = [str(round(pct, 2)) + ' %' for pct in 100.*sizes_temp1/sizes_temp1.sum()]
+        explode = [0, 0.1, 0.2, 0.3]
+        legend_temp1 = ['{0} - {1:1d}'.format(i,j) for i,j in zip(labels_temp1, sizes_temp1)]
+        
+        fig1, ax1 = plt.subplots()
+        engagement_temp1.plot(kind = 'pie', 
+                        labels = percent_temp1, 
+                        explode = explode,
+                        startangle = 90,
+                        ax = ax1)
+        ax1.axis('equal')
+        ax1.legend(legend_temp1, loc = 'center left', bbox_to_anchor=(-0.1, 1.))
+        st.pyplot(fig1)
+    
+    with st.expander('DUE 8-12 MOs', expanded = False):
+        df_temp2 = read_gsheet(read_key, '8-12 MOS DUE').copy()
+        
+        st.subheader('MESSAGE TRACKING')
+        month_days = pd.date_range(start = month_start_date, 
+                                   end = month_end_date)
+        dct_temp2 = {}
+        ref = pd.to_datetime(df_temp2['DATE MESSAGED']).value_counts()
+        for day in month_days:
+            dct_temp2[day.strftime('%Y-%m-%d')] = ref[day] if day in ref.index else 0
+        date_messaged_temp2 = pd.DataFrame(data = dct_temp2.values(), 
+                                     index = dct_temp2.keys())
+        date_messaged_temp2.columns = ['count']
+        st.bar_chart(data = date_messaged_temp2)
+        
+        st.metric('TOTAL MESSAGED',
+                  value = str(date_messaged_temp2['count'].sum()) + \
+                      ' (' + str(round(date_messaged_temp2['count'].sum()*100/len(df_temp2), 2)) + ' %)')
+        
+            
+        st.subheader('ENGAGEMENT')
+        engagement_temp2 = df_temp2[df_temp2['DATE MESSAGED'] != ''].loc[:, 'ENGAGEMENT'].replace('', '-').value_counts()
+        labels_temp2 = engagement_temp2.index
+        sizes_temp2 = engagement_temp2.values
+        percent_temp2 = [str(round(pct, 2)) + ' %' for pct in 100.*sizes_temp2/sizes_temp2.sum()]
+        explode = np.linspace(0, 0.1*(len(sizes_temp2)-1), len(sizes_temp2))
+        legend_temp2 = ['{0} - {1:1d}'.format(i,j) for i,j in zip(labels_temp2, sizes_temp2)]
+        
+        fig2, ax2 = plt.subplots()
+        engagement_temp2.plot(kind = 'pie', 
+                        labels = percent_temp2, 
+                        explode = explode,
+                        startangle = 90,
+                        ax = ax2)
+        ax2.axis('equal')
+        ax2.legend(legend_temp2, loc = 'center left', bbox_to_anchor=(-0.1, 1.))
+        st.pyplot(fig2)
+    
+
 ## =========================== main flow ======================================
 if __name__ == '__main__':
     st.title('MechaniGO.ph Customer Retention Tool')
@@ -947,128 +1051,43 @@ if __name__ == '__main__':
                             options = years,
                             index = 0)
     
+    # calculates month ranges
     selected_month_len = calendar.monthrange(int(year), list(calendar.month_abbr).index(month))
     month_start_date = datetime(int(year), list(calendar.month_abbr).index(month), 1)
     month_end_date = datetime(int(year), list(calendar.month_abbr).index(month), selected_month_len[1])
     
+    # calculates cohort rfm data for given month
+    df_retention = cohort_rfm(df_data, month_end_date)
+      
+    customer_retention_list = customer_search(df_data, df_retention)
+    # master list
+    df_merged = combine_customer_data(df_data, df_retention)
+    
     month_year = '-'.join([month, year])
     stored_url = get_url(month_year)
+    
     if stored_url is None:
-        write_url = st.text_input('Google Sheet link to write data')
-        tmp_button = st.button(f'Add Google Sheet URL for {month_year}')
-        if tmp_button:
-            add_url(month_year, write_url)
+        url = st.text_input('Google Sheet link to retention data')
+        temp_button = st.button(f'Add Google Sheet URL for {month_year}')
+        if temp_button:
+            add_url(month_year, url)
             st.experimental_rerun()
         else:
             st.stop()
         
-        # calculates cohort rfm data for given month
-        df_retention = cohort_rfm(df_data, month_end_date)
-          
-        customer_retention_list = customer_search(df_data, df_retention)
-        # master list
-        df_merged = combine_customer_data(df_data, df_retention)
-        
-        # 6-7 months due
-        due_6_7 = df_merged[df_merged.month_diff.isin([6,7]) & df_merged.frequency.isin([0,1])]
-        
-        # 8-12 months_due
-        due_8_12 = df_merged[df_merged.month_diff.between(8,12) & df_merged.frequency.isin([0,1])]
-        
-        # churned / 12+ months
-        churned = df_merged[df_merged.month_diff > 12]
-        
-        #write_url = 'https://docs.google.com/spreadsheets/d/1_Lxyx0hhK-jwpigGEbNP2YFd43FYOeKTDze_N9Sl_XQ/edit#gid=1750212761'
-        write_key = re.search('(?<=\/d\/).*(?=\/edit)', write_url)[0]
-        
-        write_to_gsheet(df_merged, 'masterlist', write_key)
-        write_to_gsheet(prep_gsheet(due_6_7), 'DUE 6-7 MOs', write_key)
-        write_to_gsheet(prep_gsheet(due_8_12), 'DUE 8-12 MOs', write_key)
-        write_to_gsheet(prep_gsheet(churned), 'CHURNED', write_key)
-    
     else:
-        # evals
-        st.header('RETENTION TRACKING')
-        read_url = 'https://docs.google.com/spreadsheets/d/1tyvgjTOQu0LZc4lNblItvKnJrCvv9VsFmDkCahqHg-8/edit#gid=926286274'
-        #read_url = get_url(month_year)
-        read_key = re.search('(?<=\/d\/).*(?=\/edit)', read_url)[0]
-        #df_67 = read_gsheet(read_key, 'DUE 6-7 MOs')
-        
-        
-        # date_messaged
-        
-        with st.expander('DUE 6-7 MOs', expanded = False):
-            df_temp1 = read_gsheet(read_key, '6 MOS DUE - 7 MOS DUE').copy()
-            st.subheader('MESSAGE TRACKING')
-            month_days = pd.date_range(start = month_start_date, 
-                                       end = month_end_date)
-            dct_temp1 = {}
-            ref = pd.to_datetime(df_temp1['DATE MESSAGED']).value_counts()
-            for day in month_days:
-                dct_temp1[day.strftime('%Y-%m-%d')] = ref[day] if day in ref.index else 0
-            date_messaged_temp1 = pd.DataFrame(data = dct_temp1.values(), 
-                                         index = dct_temp1.keys())
-            date_messaged_temp1.columns = ['count']
-            st.bar_chart(data = date_messaged_temp1)
-            
-            st.metric('TOTAL MESSAGED',
-                      value = str(date_messaged_temp1['count'].sum()) + \
-                          ' (' + str(round(date_messaged_temp1['count'].sum()*100/len(df_temp1), 2)) + ' %)')
-            
-                
-            st.subheader('ENGAGEMENT')
-            engagement_temp1 = df_temp1[df_temp1['DATE MESSAGED'] != ''].loc[:, 'ENGAGEMENT'].replace('', '-').value_counts()
-            labels_temp1 = engagement_temp1.index
-            sizes_temp1 = engagement_temp1.values
-            percent_temp1 = [str(round(pct, 2)) + ' %' for pct in 100.*sizes_temp1/sizes_temp1.sum()]
-            explode = [0, 0.1, 0.2, 0.3]
-            legend_temp1 = ['{0} - {1:1d}'.format(i,j) for i,j in zip(labels_temp1, sizes_temp1)]
-            
-            fig1, ax1 = plt.subplots()
-            engagement_temp1.plot(kind = 'pie', 
-                            labels = percent_temp1, 
-                            explode = explode,
-                            startangle = 90,
-                            ax = ax1)
-            ax1.axis('equal')
-            ax1.legend(legend_temp1, loc = 'center left', bbox_to_anchor=(-0.1, 1.))
-            st.pyplot(fig1)
-        
-        with st.expander('DUE 8-12 MOs', expanded = False):
-            df_temp2 = read_gsheet(read_key, '8-12 MOS DUE').copy()
-            
-            st.subheader('MESSAGE TRACKING')
-            month_days = pd.date_range(start = month_start_date, 
-                                       end = month_end_date)
-            dct_temp2 = {}
-            ref = pd.to_datetime(df_temp2['DATE MESSAGED']).value_counts()
-            for day in month_days:
-                dct_temp2[day.strftime('%Y-%m-%d')] = ref[day] if day in ref.index else 0
-            date_messaged_temp2 = pd.DataFrame(data = dct_temp2.values(), 
-                                         index = dct_temp2.keys())
-            date_messaged_temp2.columns = ['count']
-            st.bar_chart(data = date_messaged_temp2)
-            
-            st.metric('TOTAL MESSAGED',
-                      value = str(date_messaged_temp2['count'].sum()) + \
-                          ' (' + str(round(date_messaged_temp2['count'].sum()*100/len(df_temp2), 2)) + ' %)')
-            
-                
-            st.subheader('ENGAGEMENT')
-            engagement_temp2 = df_temp2[df_temp2['DATE MESSAGED'] != ''].loc[:, 'ENGAGEMENT'].replace('', '-').value_counts()
-            labels_temp2 = engagement_temp2.index
-            sizes_temp2 = engagement_temp2.values
-            percent_temp2 = [str(round(pct, 2)) + ' %' for pct in 100.*sizes_temp2/sizes_temp2.sum()]
-            explode = np.linspace(0, 0.1*(len(sizes_temp2)-1), len(sizes_temp2))
-            legend_temp2 = ['{0} - {1:1d}'.format(i,j) for i,j in zip(labels_temp2, sizes_temp2)]
-            
-            fig2, ax2 = plt.subplots()
-            engagement_temp2.plot(kind = 'pie', 
-                            labels = percent_temp2, 
-                            explode = explode,
-                            startangle = 90,
-                            ax = ax2)
-            ax2.axis('equal')
-            ax2.legend(legend_temp2, loc = 'center left', bbox_to_anchor=(-0.1, 1.))
-            st.pyplot(fig2)
+        url = get_url(month_year)
+        gsheet = read_gsheet(url)
+        if gsheet is None:
+            st.warning('Not able to find retention sheets.')
+            write_button = st.button('Write retention data to google sheet?')
+            if write_button:
+                write_retention_data(df_merged, url)
+                st.experimental_rerun()
+            else:
+                st.stop()
+        else:
+            # evals
+            st.header('RETENTION TRACKING')
+            show_retention_data(url)
         
