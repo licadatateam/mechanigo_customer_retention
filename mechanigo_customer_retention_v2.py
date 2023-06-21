@@ -953,7 +953,7 @@ def show_retention_data(read_url):
     
     # date_messaged
     with st.expander('DUE 6-7 MOs', expanded = False):
-        df_temp1 = read_gsheet(read_url, 'DUE 6-7 MOs').copy()
+        df_temp1 = read_gsheet(read_url, 'DUE 6-7 MOS').copy()
         st.subheader('MESSAGE TRACKING')
         month_days = pd.date_range(start = month_start_date, 
                                    end = month_end_date)
