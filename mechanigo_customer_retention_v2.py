@@ -19,7 +19,7 @@ import streamlit as st
 from st_aggrid import GridOptionsBuilder, AgGrid
 import matplotlib.pyplot as plt
 import gspread
-from gspread_formatting import *
+#from gspread_formatting import *
 
 def lev_dist(seq1, seq2):
     '''
