@@ -1064,6 +1064,13 @@ if __name__ == '__main__':
     month_start_date = datetime(int(year), list(calendar.month_abbr).index(month), 1)
     month_end_date = datetime(int(year), list(calendar.month_abbr).index(month), selected_month_len[1])
     
+    # calculates cohort rfm data for given month
+    df_retention = cohort_rfm(df_data, month_end_date)
+      
+    customer_retention_list = customer_search(df_data, df_retention)
+    # master list
+    df_merged = combine_customer_data(df_data, df_retention)
+    
     month_year = '-'.join([month, year])
     stored_url = get_url(month_year)
     
@@ -1082,13 +1089,6 @@ if __name__ == '__main__':
             st.warning('Not able to find retention sheets.')
             write_button = st.button('Write retention data to google sheet?')
             if write_button:
-                # calculates cohort rfm data for given month
-                df_retention = cohort_rfm(df_data, month_end_date)
-                  
-                customer_retention_list = customer_search(df_data, df_retention)
-                # master list
-                df_merged = combine_customer_data(df_data, df_retention)
-                
                 write_retention_data(df_merged, stored_url)
                 st.experimental_rerun()
             else:
