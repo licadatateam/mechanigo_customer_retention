@@ -874,7 +874,8 @@ def read_gsheet(url, title):
 def prep_gsheet(df):
     df_gsh = df.copy()
     
-    new_cols = ['date_messaged', 'remarket', 'engagement', 'booking_date', 'appointment_date']
+    new_cols = ['date_messaged', 'remarket', 'date_followup', 'followup_remarket',
+                'engagement', 'booking_date', 'appointment_date']
     for new_col in new_cols:
         df_gsh.loc[:, new_col] = ''
     
@@ -979,7 +980,7 @@ def retention_charts(read_url, sheet_name, month_start_date, month_end_date):
     
 
 def show_retention_data(read_url, month_start_date, month_end_date):
-    read_url = 'https://docs.google.com/spreadsheets/d/1tyvgjTOQu0LZc4lNblItvKnJrCvv9VsFmDkCahqHg-8/edit#gid=926286274'
+    #read_url = 'https://docs.google.com/spreadsheets/d/1tyvgjTOQu0LZc4lNblItvKnJrCvv9VsFmDkCahqHg-8/edit#gid=926286274'
     #read_url = get_url(month_year)
     #read_key = re.search('(?<=\/d\/).*(?=\/edit)', read_url)[0]
     #df_67 = read_gsheet(read_key, 'DUE 6-7 MOs')
