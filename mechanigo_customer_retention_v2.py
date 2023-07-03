@@ -947,6 +947,7 @@ def retention_charts(read_url, sheet_name, month_start_date, month_end_date):
     month_days = pd.date_range(start = month_start_date, 
                                end = month_end_date)
     dct = {}
+    df_temp['DATE MESSAGED'] = df_temp['DATE MESSAGED'].replace('-', np.NaN)
     ref = pd.to_datetime(df_temp['DATE MESSAGED']).value_counts()
     for day in month_days:
         dct[day.strftime('%Y-%m-%d')] = ref[day] if day in ref.index else 0
