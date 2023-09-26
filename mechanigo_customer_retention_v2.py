@@ -606,7 +606,7 @@ def get_data():
         
     '''
     
-    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=QHb7Vxu8oKMyOVhf4bw7YtWRcuQfzvMS6YBSqgeM", 
+    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=utWqs85AqS84EsILQApE6WKhAFDaZVOlwgXdMfdW", 
                            parse_dates = ['date','appointment_date','date_confirmed','date_cancelled'])
     all_data.loc[:,'date'] = pd.to_datetime(all_data.loc[:,'date'])
     # rename columns
