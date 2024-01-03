@@ -256,7 +256,7 @@ def fix_phone_num(phone):
     Returns:
     phone : string
     '''
-    phone = ''.join(phone.split(' '))
+    phone = ''.join(str(phone).split(' '))
     phone = ''.join(phone.split('-'))
     phone = re.sub('^\+63', '0', phone)
     phone = '0' + phone if phone[0] == '9' else phone
