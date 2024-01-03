@@ -1129,7 +1129,7 @@ if __name__ == '__main__':
     df_data = get_data()
     
     # select month & year to get customer returnees
-    years = ['2023', '2022']
+    years = ['2024', '2023', '2022']
     mo_col, yr_col = st.columns(2)
     with mo_col:
         month = st.selectbox('Month:',
