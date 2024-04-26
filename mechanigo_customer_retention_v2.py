@@ -256,7 +256,8 @@ def fix_phone_num(phone):
     Returns:
     phone : string
     '''
-    phone = ''.join(str(phone).split(' '))
+    phone = str(phone)
+    phone = ''.join(phone.split(' '))
     phone = ''.join(phone.split('-'))
     phone = re.sub('^\+63', '0', phone)
     phone = '0' + phone if phone[0] == '9' else phone
@@ -687,7 +688,7 @@ def cohort_rfm(df, month_end_date):
         Customer dataframe with extracted RFM features
 
     '''
-    df = df[df.date < month_end_date]
+    df = df[df.date <= month_end_date]
     
     df_retention = df.groupby(['full_name', 'brand', 'model']).agg(first_acq=('appointment_date', lambda x: x.min().year*100 + x.min().month),
                                        recency=('appointment_date', lambda x: (x.max() - x.min()).days),
@@ -837,7 +838,7 @@ def write_gsheet(df, sheet_name, gsheet_key):
     r,c = df.shape
     
     try:
-        sh.add_worksheet(title=new_sheet_name,rows = r+1, cols = c+1)
+        sh.add_worksheet(title=new_sheet_name,rows = 1000, cols = c+5)
         worksheet = sh.worksheet(new_sheet_name)
     except:
         worksheet = sh.worksheet(new_sheet_name)
@@ -924,10 +925,10 @@ def add_url(key, value):
 
 def write_retention_data(data, write_url):
     # 6-7 months due
-    due_6_7 = data[data.month_diff.isin([6,7]) & data.frequency.isin([0,1])]
+    due_6_7 = data[data.month_diff.isin([6,7])]
     
     # 8-12 months_due
-    due_8_12 = data[data.month_diff.between(8,12) & data.frequency.isin([0,1])]
+    due_8_12 = data[data.month_diff.between(8,12)]
     
     # churned / 12+ months
     churned = data[data.month_diff > 12]
@@ -943,6 +944,7 @@ def write_retention_data(data, write_url):
 
 def retention_charts(read_url, sheet_name, month_start_date, month_end_date):
     df_temp = read_gsheet(read_url, sheet_name).copy()
+    
     st.subheader('MESSAGE TRACKING')
     month_days = pd.date_range(start = month_start_date, 
                                end = month_end_date)
@@ -978,6 +980,7 @@ def retention_charts(read_url, sheet_name, month_start_date, month_end_date):
     ax.axis('equal')
     ax.legend(legend, loc = 'center left', bbox_to_anchor=(-0.1, 1.))
     st.pyplot(fig)
+    return df_temp
     
 
 def show_retention_data(read_url, month_start_date, month_end_date):
@@ -989,16 +992,18 @@ def show_retention_data(read_url, month_start_date, month_end_date):
     # date_messaged
     
     with st.expander('6-7 MOS DUE', expanded = False):
-        retention_charts(read_url, '6-7 MOS DUE', month_start_date,
+        df1 = retention_charts(read_url, '6-7 MOS DUE', month_start_date,
                          month_end_date)
     
     with st.expander('8-12 MOS DUE', expanded = False):
-        retention_charts(read_url, '8-12 MOS DUE', month_start_date,
+        df2 = retention_charts(read_url, '8-12 MOS DUE', month_start_date,
                          month_end_date)
     
     with st.expander('CHURNED', expanded = False):
-        retention_charts(read_url, 'CHURNED', month_start_date,
+        df3 = retention_charts(read_url, 'CHURNED', month_start_date,
                          month_end_date)
+    
+    return df1, df2, df3
 
 @st.cache_data
 def calc_retention_rate(filtered_df, date_range, rate_or_actual):
@@ -1204,7 +1209,7 @@ if __name__ == '__main__':
             else:
                 # evals
                 st.header('RETENTION TRACKING')
-                show_retention_data(stored_url, month_start_date, month_end_date)
+                df1, df2, df3 = show_retention_data(stored_url, month_start_date, month_end_date)
                 
     with cohort_tab:
         
