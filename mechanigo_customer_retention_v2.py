@@ -607,7 +607,7 @@ def get_data():
         
     '''
     
-    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=utWqs85AqS84EsILQApE6WKhAFDaZVOlwgXdMfdW", 
+    all_data = pd.read_csv("http://app.redash.licagroup.ph/api/queries/103/results.csv?api_key=6YasNn0zncT4hgBMGClnM0WXm2TCQlCYWOpwy72f", 
                            parse_dates = ['date','appointment_date','date_confirmed','date_cancelled'])
     all_data.loc[:,'date'] = pd.to_datetime(all_data.loc[:,'date'])
     # rename columns
@@ -638,10 +638,12 @@ def get_data():
     all_data.loc[:, 'mechanic_name'] = all_data.apply(lambda x: fix_name(x['mechanic_name']).title(), axis=1)
 
         # desired columns
-    cols = ['id', 'date', 'email','phone', 'address', 'full_name','brand', 'model', 'model_year', 
-        'appointment_date', 'mechanic_name', 'category', 'service_name', 'sub_total', 'service_fee', 
-        'total_cost', 'date_confirmed', 'status', 'status_of_payment','customer_id', 
-        'fuel_type', 'transmission', 'plate_number','mileage', 'year_month', 'lead_source']
+    cols = ['id', 'date', 'email','phone', 'address', 'full_name', 'barangay', 
+            'municipality', 'province', 'brand', 'model', 'model_year', 
+            'appointment_date', 'mechanic_name', 'category', 'service_name', 
+            'sub_total', 'service_fee', 'total_cost', 'date_confirmed', 'status', 
+            'status_of_payment','customer_id', 'fuel_type', 'transmission', 
+            'plate_number','mileage', 'year_month', 'lead_source']
     
     # columns used for dropping duplicates
     drop_subset = ['full_name', 'brand', 'model', 'appointment_date', 'date']
@@ -738,7 +740,8 @@ def combine_customer_data(df_data, df_retention):
     '''
     Combine dataframes for display/filter-ready use
     '''
-    df_temp = df_data.reset_index()[['full_name', 'phone', 'email', 'address', 'brand', 'model', 
+    df_temp = df_data.reset_index()[['full_name', 'phone', 'email', 'address', 'barangay',
+                                     'municipality', 'province', 'brand', 'model', 
                                      'model_year', 'plate_number', 'service_name', 
                                      'prior_services','tx_month', 'lead_source']]\
                                     .drop_duplicates(subset=['full_name', 'brand', 'model'], keep='first')
@@ -1209,7 +1212,8 @@ if __name__ == '__main__':
             else:
                 # evals
                 st.header('RETENTION TRACKING')
-                df1, df2, df3 = show_retention_data(stored_url, month_start_date, month_end_date)
+                df1, df2, df3 = show_retention_data(stored_url, month_start_date, 
+                                                    month_end_date)
                 
     with cohort_tab:
         
