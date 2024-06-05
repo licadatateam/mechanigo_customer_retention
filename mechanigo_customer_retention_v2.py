@@ -615,6 +615,8 @@ def get_data():
                                         'name':'status',
                                         'make': 'brand'})
     
+    all_data = all_data.dropna(subset = ['brand', 'model'])
+    
     # filter out non integer results in "model_year"
     all_data.loc[:,'model_year'] = all_data.model_year.apply(lambda x: clean_year(x)).astype(pd.Int64Dtype())
     
