@@ -823,7 +823,7 @@ def write_gsheet(df, sheet_name, gsheet_key):
         dataframe to write to google sheet
     
     '''
-    credentials = st.secrets['secrets']
+    credentials = st.secrets['credentials']
     
     gc = gspread.service_account_from_dict(credentials)
     sh = gc.open_by_key(gsheet_key)
