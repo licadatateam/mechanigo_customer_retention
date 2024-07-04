@@ -83,7 +83,7 @@ def clean_makes(x, makes):
     
     '''
     if pd.isna(x):
-        return np.NaN
+        return np.nan
         
     else:
         x = x.strip().upper()
@@ -158,13 +158,13 @@ def clean_model(model, makes, models):
         
         else:
             # proceed to askGPT
-            return np.NaN
+            return np.nan
     else:
-        return np.NaN
+        return np.nan
 
 def clean_year(x):
     if pd.isna(x) or (x is None) or (x == 'None'):
-        return np.NaN
+        return np.nan
     else:
         if isinstance(x, float) or isinstance(x, int):
             year = int(x)
@@ -173,12 +173,12 @@ def clean_year(x):
             try:
                 year = int(''.join(re.findall('[0-9]', x.split('.')[0])))
             except:
-                year = np.NaN
+                year = np.nan
         else:
-            year = np.NaN
+            year = np.nan
         # if year is greater than next year, convert to 0/null
         if year > (datetime.today().year + 1):
-            year = np.NaN
+            year = np.nan
         else:
             pass
         
@@ -271,7 +271,7 @@ ph_loc = import_location()
 
 def get_best_match(query, match_list):
     if len(match_list) == 0:
-        return np.NaN
+        return np.nan
     elif len(match_list) == 1:
         return match_list[0][0]
     else:
@@ -280,7 +280,7 @@ def get_best_match(query, match_list):
             return matches[best_index]
         else:
             min_lev_dist = 100
-            best_match = np.NaN
+            best_match = np.nan
             for m in matches:
                 lev_d = lev_dist(query, m)
                 if lev_d < min_lev_dist:
@@ -296,7 +296,7 @@ def clean_location(loc, ph_loc, prov = None):
     
     
     if pd.isna(loc):
-        return np.NaN, np.NaN, np.NaN
+        return np.nan, np.nan, np.nan
     else:
         loc = loc.title().strip()
         if ('City' in loc.split(', ')[0]) and (loc.split(', ')[0] in ph_loc[ph_loc.city.str.contains('City')]['city'].unique()):
@@ -319,7 +319,7 @@ def clean_location(loc, ph_loc, prov = None):
             if len(city_match_list) > 0:
                 city_match = get_best_match(loc, city_match_list)
             else:
-                city_match = np.NaN
+                city_match = np.nan
         
         if pd.notna(city_match):
             if prov is not None:
@@ -393,7 +393,7 @@ tire_brands = ["BRIDGESTONE", "DUNLOP", "GOODYEAR", "MICHELIN", "BF(\s)?GOODRICH
 
 def get_service_name(service_category, service_name):
     if pd.isna(service_name):
-        return np.NaN
+        return np.nan
     else:
         cat = service_category
         service_name = service_name.upper().strip()
@@ -943,7 +943,7 @@ def retention_charts(read_url, sheet_name, month_start_date, month_end_date):
     month_days = pd.date_range(start = month_start_date, 
                                end = month_end_date)
     dct = {}
-    df_temp['DATE MESSAGED'] = df_temp['DATE MESSAGED'].replace('-', np.NaN)
+    df_temp['DATE MESSAGED'] = df_temp['DATE MESSAGED'].replace('-', np.nan)
     ref = pd.to_datetime(df_temp['DATE MESSAGED']).value_counts()
     for day in month_days:
         dct[day.strftime('%Y-%m-%d')] = ref[day] if day in ref.index else 0
