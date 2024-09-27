@@ -1186,7 +1186,7 @@ if __name__ == '__main__':
             temp_button = st.button(f'Add Google Sheet URL for {month_year}')
             if temp_button:
                 add_url(month_year, url)
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.stop()
             
@@ -1197,7 +1197,7 @@ if __name__ == '__main__':
                 write_button = st.button('Write retention data to google sheet?')
                 if write_button:
                     write_retention_data(df_merged, stored_url)
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.stop()
             else:
